@@ -1,6 +1,8 @@
 The OpenML Data Cleaner tool consists of a few important files
 
-Before running the code, make sure to install packages as specified in the requirements.txt file
+Before running the code, make sure to install the packages specified in the requirements.txt file
+
+The app works for Python 3.9.
 
 The dashapp.py file contains the app itself with all the functionalities of the OpenML Data Cleaner.
 To run the OpenML Data Cleaner, simply run this file.
