@@ -6,6 +6,7 @@ The app works for Python 3.9.
 
 The dashapp.py file contains the app itself with all the functionalities of the OpenML Data Cleaner.
 To run the OpenML Data Cleaner, simply run this file.
+The app right now requires a user to upload a dataset as a .csv file. This will be changed soon.
 This file makes use of:
 * the error_detection.py file, which contains functions for error detection
 * the error_correctinon.py file, which contains functions for error correction
