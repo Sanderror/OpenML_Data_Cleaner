@@ -7,6 +7,7 @@ The app works for Python 3.9.
 The dashapp.py file contains the app itself with all the functionalities of the OpenML Data Cleaner.
 To run the OpenML Data Cleaner, simply run this file.
 * To run the file, you first have to add an OpenAI API key to the create_correct_cryp_section function in the create_section.py file, for the Cryptic Attribute Names correction to work as intended.
+* The most optimal view of the tool currently requires you to zoom out to 67% (this will be fixed soon), otherwise the text and sections are too big.
 * The app right now requires a user to upload a dataset as a .csv file. This will be changed soon.
 * To see the error detections and corrections for all errors, it is advised to use the synthetic_data.csv file in the data folder of this repository
 
