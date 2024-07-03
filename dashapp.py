@@ -53,7 +53,7 @@ def imputation_model(df, mv_list, ft_types, outs=False, mix_data=False, method='
             else:
                 model = 'CART'
     else:
-        if mr_rate < 0.2:
+        if mr_rate < 0.1:
             model = 'KNN'
         else:
             if df_size < 10000:
@@ -319,20 +319,7 @@ def error_detection(df, num_df, ft_types, target):
             html.Div(id='complete-out-list', style={'display': 'none'}),
         ])
 
-    nr_pct_col_dct = dict()
-    nr_pct_col_dct['mvs'] = [nr_of_mvs, pct_of_mvs, mvs_color]
-    nr_pct_col_dct['dup_rows'] = [nr_of_dup_rows, pct_of_dup_rows, dup_rows_color]
-    nr_pct_col_dct['dup_cols'] = [nr_of_dup_cols, pct_of_dup_cols, dup_cols_color]
-    nr_pct_col_dct['out_vals'] = [nr_of_out_vals, pct_of_out_vals, out_vals_color]
-    nr_pct_col_dct['out_rows'] = [nr_of_out_rows, pct_of_out_rows, out_rows_color]
-    nr_pct_col_dct['cryps'] = [nr_of_cryps, pct_of_cryps, cryps_color]
-    nr_pct_col_dct['svs'] = [nr_of_svs, pct_of_svs, svs_color]
-    nr_pct_col_dct['mds'] = [nr_of_mds, pct_of_mds, mds_color]
-    nr_pct_col_dct['mls'] = [nr_of_mislabels, pct_of_mislabels, mislabels_color]
-    nr_pct_col_dct['mms'] = [nr_of_mms, pct_of_mms, mms_color]
-
     return html.Div([
-        dcc.Store(id='error-summary', data=nr_pct_col_dct, storage_type='memory'),
         dcc.Store(id='duplicate-rows', data=dup_row_list, storage_type='memory'),
         dcc.Store(id='duplicate-cols', data=dup_col_list, storage_type='memory'),
         dcc.Store(id='out-row-probs', data=out_row_probs_fp, storage_type='memory'),
@@ -619,12 +606,19 @@ def error_detection(df, num_df, ft_types, target):
         )
     ])
 
-def recommendations(df, num_df, ft_types, target, mv_list, dup_rows, dup_cols, out_vals, out_rows, cryp_cols, sv_cols, mix_data_dct, ml_list, mm_list, error_summary):
+def recommendations(df, num_df, ft_types, target, mv_list, dup_rows, dup_cols, out_vals, out_rows, cryp_cols, sv_cols, mix_data_dct, ml_list, mm_list):
     ''' This is the main section where the recommendations for the corrections of the errors is generated'''
-    imp_mv_mdl = imputation_model(df, mv_list, ft_types, False, False)
-    imp_out_mdl = imputation_model(df, out_vals, ft_types, True, False)
-    imp_md_mdl = imputation_model(df, mix_data_dct, ft_types, False, True)
-    cryp_dtb = create_correct_cryp_section(df, cryp_cols)
+    error_summary = create_badge_numbers(df, num_df, ft_types, target, mv_list, dup_rows, dup_cols, out_vals, out_rows, cryp_cols, sv_cols, mix_data_dct, ml_list, mm_list)
+    mvs_section = create_mvs_correct_section(df, mv_list, ft_types)
+    dup_rows_section = create_dup_row_correct_section(dup_rows)
+    dup_cols_section = create_dup_col_correct_section(dup_cols)
+    out_vals_section = create_out_val_correct_section(df, out_vals, ft_types)
+    out_rows_section = create_out_row_correct_section(out_rows)
+    cryp_section = create_cryp_correct_section(df, cryp_cols)
+    sv_section = create_sv_correct_section(sv_cols)
+    md_section = create_md_correct_section(df, mix_data_dct, ft_types)
+    ml_section = create_ml_correct_section(ml_list)
+    mm_section = create_mm_correct_section(mm_list)
 
     return html.Div([
         html.H2("Error Correction"),
@@ -633,14 +627,7 @@ def recommendations(df, num_df, ft_types, target, mv_list, dup_rows, dup_cols, o
         dbc.Accordion([
             dbc.AccordionItem([
                 html.H2('(Disguised) Missing Values'),
-                html.H4('Recommendations'),
-                html.P(f"Our recommended correction technique for the missing values is imputation using {imp_mv_mdl} on all columns"),
-                html.P("In the dropdown menu below you can select the correction technique. If you select \'Imputation\', a section pops up to select the imputation technique"),
-                html.Div(dcc.Dropdown(id='dropdown-correct-mvs', options=[{'label':'Imputation', 'value':'imputation'}, {'label':'Remove rows', 'value':'remove'}, {'label':'Keep all', 'value':'keep'}]), style={'display': 'inline-block', 'width': '30%'}),
-                html.Div(id='correct-methods-mvs'),
-                html.Div(id='mv-correct-method', style={'display':'none'}),
-                html.Div(id='submit-mv-correct-method'),
-                html.Div(id='display-mv-correction')
+                mvs_section
                 ],
                 title=dbc.Row(
                 [
@@ -654,30 +641,10 @@ def recommendations(df, num_df, ft_types, target, mv_list, dup_rows, dup_cols, o
             )),
             dbc.AccordionItem([
                 html.H2("Duplicate Rows"),
-                html.H4('Recommendations'),
-                html.P(
-                    f"Our recommended correction technique for the duplicate rows is to keep the first row of each duplicate group and remove the other rows in that group."),
-                html.P("In the dropdown menu below you can choose the correction technique you want to apply. The option \'Select keep/remove\' allows you to choose for every group which row you want to keep and which you want to remove."),
-                html.Div(dcc.Dropdown(id='dropdown-correct-dup-rows', options=[{'label':'Keep first, remove rest', 'value':'keep_first'}, {'label':'Remove all', 'value':'remove'}, {'label':'Keep all', 'value':'keep_all'}, {'label':'Select keep/remove', 'value':'select'}]), style={'display': 'inline-block', 'width': '30%'}),
-                html.Div(id='correct-methods-dup-rows'),
-                html.Div(id='submit-dup-row-correct-method'),
-                html.Div(id='dup-row-correct-method', style={'display':'none'}),
-                html.Div(id='dup-row-retain-checklist'),
-                html.Div(id='output-submit-dup-rows'),
+                dup_rows_section,
                 html.Hr(),
                 html.H2('Duplicate Columns'),
-                html.H4("Recommendations"),
-                html.P(
-                    "Our recommended correction technique for the duplicate columns is to keep the first column of each duplicate group and remove the other column in that group."),
-                html.P(
-                    "In the dropdown menu below you can choose the correction technique you want to apply. The option \'Select keep/remove\' allows you to choose for every column which column you want to keep and which you want to remove."),
-                html.Div(dcc.Dropdown(id='dropdown-correct-dup-cols', options=[{'label':'Keep first, remove rest', 'value':'keep_first'}, {'label':'Remove all', 'value':'remove'}, {'label':'Keep all', 'value':'keep_all'}, {'label':'Select keep/remove', 'value':'select'}]), style={'display': 'inline-block', 'width': '30%'}),
-                html.Div(id='correct-methods-dup-cols'),
-                html.Div(id='submit-dup-col-correct-method'),
-                html.Div(id='dup-col-correct-method', style={'display': 'none'}),
-                html.Div(id='dup-col-retain-checklist'),
-                html.Div(id='output-submit-dup-cols'),
-                # html.Div(dup_col_table)
+                dup_cols_section
             ],
                 title=dbc.Row(
                 [
@@ -699,31 +666,10 @@ def recommendations(df, num_df, ft_types, target, mv_list, dup_rows, dup_cols, o
             )),
             dbc.AccordionItem([
                 html.H2("Outlier Values"),
-                html.H4("Recommendations"),
-                html.P(f"Our recommended correction technique for the outlier values is imputation using {imp_out_mdl} on all columns"),
-                html.P(
-                    "In the dropdown menu below you can select the correction technique. If you select \'Imputation\', a section pops up to select the imputation technique. If you select \'Type specific\', a section pops up where you can choose the correction method per outlier type (i.e. close or far)."),
-                html.Div(dcc.Dropdown(id='dropdown-correct-outs', options=[{'label': 'Imputation', 'value': 'imputation'},
-                                                                 {'label': 'Remove rows', 'value': 'remove'},
-                                                                 {'label': 'Keep all', 'value': 'keep'},
-                                                                  {'label':'Type specific', 'value':'type'}]), style={'display': 'inline-block', 'width': '30%'}),
-                html.Div(id='correct-methods-outs'),
-                html.Div(id='out-correct-method', style={'display': 'none'}),
-                html.Div(id='submit-out-correct-method'),
-                html.Div(id='display-out-correction'),
+                out_vals_section,
                 html.Hr(),
                 html.H2("Outlier Rows"),
-                html.H4("Recommendations"),
-                html.P("Our recommended correction technique for the outlier rows is to remove these rows from your dataset."),
-                html.P("In the dropdown menu below you can select the correction technique. The option \'Select keep/remove\' allows you to choose for every row which row you want to keep and which you want to remove."),
-                html.Div(dcc.Dropdown(id='dropdown-correct-out-rows', options=[{'label': 'Remove all', 'value': 'remove'},
-                                                                  {'label': 'Keep all', 'value': 'keep'},
-                                                                  {'label': 'Select keep/remove', 'value': 'select'}]), style={'display': 'inline-block', 'width': '30%'}),
-                html.Div(id='correct-methods-out-rows'),
-                html.Div(id='out-row-correct-method', style={'display': 'none'}),
-                html.Div(id='submit-out-row-correct-method'),
-                html.Div(id='out-row-retain-checklist'),
-                html.Div(id='output-submit-out-rows'),
+                out_rows_section
             ],
             title=dbc.Row(
                 [
@@ -745,19 +691,7 @@ def recommendations(df, num_df, ft_types, target, mv_list, dup_rows, dup_cols, o
             )),
             dbc.AccordionItem([
                 html.H2("Cryptic Column Names"),
-                html.H4("Recommendations"),
-                html.P("Our recommended correction technique for the cryptic column names is to change them to the suggested names of GPT-3.5."),
-                html.P("Below you can see the suggested new column names instead of the cryptic names as suggested by GPT-3.5. You can also change the names in the \'Corrected name\' column yourself."),
-                cryp_dtb,
-                html.P("In the dropdown menu below you can select the correction technique. The option \'Select keep/change\' allows you to choose for every column whether you want to keep the previous name or change it to the suggested name."),
-                html.Div(dcc.Dropdown(id='dropdown-correct-cryp', options=[{'label':'Change to suggested names', 'value':'suggested'},
-                                                                  {'label':'Keep original names', 'value':'keep'},
-                                                                  {'label':'Select keep/change', 'value':'select'}]), style={'display': 'inline-block', 'width': '30%'}),
-                html.Div(id='correct-methods-cryp'),
-                html.Div(id='cryp-correct-method', style={'display': 'none'}),
-                html.Div(id='submit-cryp-correct-method'),
-                html.Div(id='cryp-retain-checklist'),
-                html.Div(id='output-submit-cryp')
+                cryp_section
             ],
             title=dbc.Row(
                 [
@@ -771,19 +705,7 @@ def recommendations(df, num_df, ft_types, target, mv_list, dup_rows, dup_cols, o
             )),
             dbc.AccordionItem([
                 html.H2("Single Value Columns"),
-                html.H4("Recommendations"),
-                html.P("Our recommended correction technique for the single value columns is to remove them from the dataset."),
-                html.P("In the dropdown menu below you can select the correction technique. The option \'Select keep/remove\' allows you to choose which single value columns you want to keep and which you want to remove."),
-                html.Div(dcc.Dropdown(id='dropdown-correct-svs', options=[{'label': 'Remove all', 'value': 'remove'},
-                                                                      {'label': 'Keep all', 'value': 'keep'},
-                                                                      {'label': 'Select keep/remove',
-                                                                       'value': 'select'}]), style={'display': 'inline-block', 'width': '30%'}),
-                html.Div(id='correct-methods-svs'),
-                html.Div(id='svs-correct-method', style={'display': 'none'}),
-                html.Div(id='submit-svs-correct-method'),
-                html.Div(id='sv-retain-checklist'),
-                html.Div(id='output-submit-svs'),
-                html.Div(id='renamed-cols', style={'display':'none'})
+                sv_section
             ],
             title=dbc.Row(
                 [
@@ -797,20 +719,7 @@ def recommendations(df, num_df, ft_types, target, mv_list, dup_rows, dup_cols, o
             )),
             dbc.AccordionItem([
                 html.H2("Mixed Data Type Columns"),
-                html.H4("Recommendations"),
-                html.Div(id='md-col-specific', style={'display': 'none'}),
-                html.P(f"Our recommended correction technique for the mixed data type columns is to convert the minority data type to the majority data type using {imp_md_mdl} imputation."),
-                html.P("In the dropdown menu below, you must first select whether you want to correct all minority types, all majority types, or correct them column-specific."),
-                html.Div(dcc.Dropdown(id='dropdown-mds-major-minor', options=[{'label':'Minority type', 'value':'minor'},
-                                                                     {'label':'Majority type', 'value':'major'},
-                                                                     {'label':'Column-specific types', 'value':'column'}]), style={'display': 'inline-block', 'width': '30%'}),
-                html.Div(id='md-dropdown-section'),
-                html.Div(id='dropdown-correct-mds'),
-                html.Div(id='correct-methods-mds'),
-                html.Div(id='mds-correct-method', style={'display': 'none'}),
-                html.Div(id='submit-mds-correct-method'),
-                html.Div(id='complete-md-list', style={'display':'none'}),
-                html.Div(id='display-mds-correction'),
+                md_section
             ],
             title=dbc.Row(
                 [
@@ -824,16 +733,7 @@ def recommendations(df, num_df, ft_types, target, mv_list, dup_rows, dup_cols, o
             )),
             dbc.AccordionItem([
                 html.H2("Incorrect Labels"),
-                html.H4("Recommendations"),
-                html.P("Our recommended correction technique for the incorrect labels is to convert them to the suggested correct label."),
-                html.P("In the dropdown menu below, you can select the correction technique."),
-                html.Div(dcc.Dropdown(id='dropdown-correct-mls', options=[{'label':'Convert to correct label', 'value':'convert'},
-                                                                 {'label':'Remove rows', 'value':'remove'},
-                                                                 {'label':'Keep all', 'value':'keep'}]), style={'display': 'inline-block', 'width': '30%'}),
-                html.Div(id='correct-methods-mls'),
-                html.Div(id='ml-correct-method', style={'display': 'none'}),
-                html.Div(id='submit-ml-correct-method'),
-                html.Div(id='display-ml-correction')
+                ml_section
             ],
             title=dbc.Row(
                 [
@@ -847,17 +747,7 @@ def recommendations(df, num_df, ft_types, target, mv_list, dup_rows, dup_cols, o
             )),
             dbc.AccordionItem([
                 html.H2("String Mismatches"),
-                html.H4("Recommendations"),
-                html.P("Our recommended correction technique for the string mismatches is to convert the mismatch variations to the suggested base form."),
-                html.P("In the dropdown menu below, you can select the correction technique. The \'Convert to mode\' option converts the mismatch variations to the most frequently occurring variation of that mismatch."),
-                html.Div(dcc.Dropdown(id='dropdown-correct-mms', options=[{'label':'Convert to base form', 'value':'convert_base'},
-                                                                 {'label':'Convert to mode', 'value':'convert_mode'},
-                                                                 {'label':'Remove rows', 'value':'remove'},
-                                                                 {'label':'Keep all', 'value':'keep'}]), style={'display': 'inline-block', 'width': '30%'}),
-                html.Div(id='correct-methods-mms'),
-                html.Div(id='mm-correct-method', style={'display': 'none'}),
-                html.Div(id='submit-mm-correct-method'),
-                html.Div(id='display-mm-correction')
+                mm_section
             ],
             title=dbc.Row(
                 [
@@ -1897,9 +1787,8 @@ def store_all_mls(mm_table_previous, mm_table, selected_mms_data, added_mms_data
                Input('sv-col-list', 'data'),
                Input('mix-data-dct-fp', 'data'),
                Input('complete-ml-list', 'data'),
-               Input('complete-mm-list', 'data'),
-               Input('error-summary', 'data')])
-def process_error_detections(submit_n_clicks, df_fp, num_df_fp, ft_types_fp, target, mv_list_fp, dup_rows, dup_cols, out_vals_fp, out_rows_fp, cryp_cols_data, sv_cols, mix_data_fp,ml_list_fp, mm_list_fp, error_summary):
+               Input('complete-mm-list', 'data')])
+def process_error_detections(submit_n_clicks, df_fp, num_df_fp, ft_types_fp, target, mv_list_fp, dup_rows, dup_cols, out_vals_fp, out_rows_fp, cryp_cols_data, sv_cols, mix_data_fp,ml_list_fp, mm_list_fp):
     changed_id = [p['prop_id'] for p in dash.callback_context.triggered][0]
     if 'confirm-errors' in changed_id:
         df = fetch_data(df_fp)
@@ -1930,8 +1819,7 @@ def process_error_detections(submit_n_clicks, df_fp, num_df_fp, ft_types_fp, tar
         print("Mix data: ", mix_data_dct)
         print("ML list: ", ml_list)
         print("MMs: ", mm_list)
-        print("Error summary: ", error_summary)
-        return recommendations(df, num_df, ft_types, target, mv_list, dup_rows, dup_cols, out_vals, out_rows, cryp_cols, sv_cols, mix_data_dct, ml_list, mm_list, error_summary)
+        return recommendations(df, num_df, ft_types, target, mv_list, dup_rows, dup_cols, out_vals, out_rows, cryp_cols, sv_cols, mix_data_dct, ml_list, mm_list)
         # return error_correction(df, num_df, ft_types, target, mv_list, dup_rows, dup_cols, out_vals, out_rows, cryp_cols, sv_cols, mix_data_dct, ml_list, mm_list)
     else:
         return ""
@@ -2138,7 +2026,7 @@ def recommend_dups(df_fp, ft_types_fp, dup_rows, method):
             if len(in_df) != 0:
                 new_dup.append(in_df)
         dup_rows = new_dup
-        dtb = create_dup_group_section(dup_rows, df)
+        dtb = create_dup_group_section(dup_rows, df, 'row')
         return html.Div([
             dcc.Store(id='dup-row-correct-method', data=method, storage_type='memory'),
             html.P("You have selected \'Select keep/remove\' as correction technique. Below you can select which rows you want to keep for every group."),
@@ -2242,7 +2130,7 @@ def apply_dup_rows(df_fp, n_clicks, retain_checklist_values, dup_rows, method):
 def recommend_dups_cols(df_fp, dup_cols, method):
     df = fetch_data(df_fp)
     if method == 'select':
-        dtb = create_dup_col_select_section(dup_cols, df)
+        dtb = create_dup_group_section(dup_cols, df, 'col')
         return html.Div([
             dcc.Store(id='dup-col-correct-method', data=method, storage_type='memory'),
             html.P("You have selected \'Select keep/remove\' as correction technique. Below you can select which rows you want to keep for every group."),
@@ -3391,56 +3279,6 @@ def apply_mms(n_clicks, df_fp, ft_types_fp, mm_list_fp, method, rename_dct):
                              "Your correction technique has been applied on the dataset and the updated dataset is shown below."),
                          mm_corr_badge,
                          mm_corr_dtb])
-
-
-
-
-# @app.callback(Output('dup-rows-button-output', 'children'),
-#               [Input('remove-dup-rows', 'n_clicks'),
-#                Input('keep-dup-rows', 'n_clicks'),
-#                State('duplicate-rows', 'data'),
-#                State("stored-df", 'data')])
-# def handle_dup_rows(remove_clicks, keep_clicks, dup_rows, df_fp):
-#     df = fetch_data(df_fp)
-#     changed_id = [p['prop_id'] for p in dash.callback_context.triggered][0]
-#     if 'remove-dup-rows' in changed_id and remove_clicks > 0:
-#         dtb = correct_dup_row(df, dup_rows)
-#         return html.Div([
-#             html.P("We have removed the duplicate rows from your dataset. Below you can see the new dataset, where the removed rows are marked by a red line"),
-#             dtb])
-#     elif 'keep-dup-rows' in changed_id and keep_clicks > 0:
-#         return html.Div([
-#             html.P("Do you want to keep all duplicate rows, or choose specific rows to keep and remove?"),
-#             html.Button("Keep all", id='keep-all-dup-rows', n_clicks=0),
-#             html.Button("Don't keep all", id='not-keep-all-dup-rows', n_clicks=0)
-#         ])
-#     else:
-#         return ""
-#
-# @app.callback(Output("keep-or-not-button-output", 'children'),
-#               [Input('keep-all-dup-rows', 'n_clicks'),
-#                Input('not-keep-all-dup-rows', 'n_clicks'),
-#                State('stored-df', 'data')])
-# def handle_not_removing_all_dups(keep_all_clicks, not_keep_all_clicks, df_fp):
-#     df = fetch_data(df_fp).reset_index()
-#     changed_id = [p['prop_id'] for p in dash.callback_context.triggered][0]
-#     if 'keep-all-dup-rows' in changed_id and keep_all_clicks > 0:
-#         dtb = dash_table.DataTable(
-#             data=df.to_dict("records"),
-#             columns=[{'name':i,'id':i} for i in df.columns],
-#             page_size=20
-#         )
-#         return html.Div([
-#             html.P("You chose to keep all duplicate rows in your dataset. We have not changed your dataset"),
-#             dtb
-#         ])
-#     elif 'not-keep-all-dup-rows' in changed_id and not_keep_all_clicks > 0:
-#
-#         return html.Div([
-#             html.P("Please select for all duplicates below which index you want to keep (the other indices will be removed) using the dropdown menu in column \"Keep index\", or choose \"keep\" if you do not want to remove any of the indices corresponding to that duplicate."),
-#         ])
-#     else:
-#         return ""
 
 @app.callback(
     Output('fully-cleaned-dataset', 'children'),

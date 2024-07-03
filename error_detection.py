@@ -45,6 +45,7 @@ from numpy.linalg import norm
 
 class CrypticIdentifier:
     """Module to identify any cryptic forms in a column header.
+    This module is created by Zhang et al. (2023) as referenced in the paper
     Example usage:
         identifier = CrypticIdentifier(vocab_file)
         identifier.iscryptic("newyorkcitytotalpopulation") --> False
@@ -494,9 +495,9 @@ def detect_all_mvs(df):
     print(output_df)
     if pct_of_mvs == 0:
         mvs_color = '#50C878'
-    elif pct_of_mvs < 20:
+    elif pct_of_mvs < 10:
         mvs_color = 'orange'
-    elif pct_of_mvs >= 20:
+    elif pct_of_mvs >= 10:
         mvs_color = 'tomato'
     return dtb, output_df, nr_of_mvs, pct_of_mvs, mvs_color
 
@@ -611,9 +612,9 @@ def detect_outlier_val(df, ft_types, k=2):
     output_df['Erroneous Outlier?'] = 'yes'
     if pct_of_out_vals == 0:
         out_vals_color = '#50C878'
-    elif pct_of_out_vals < 20:
+    elif pct_of_out_vals < 10:
         out_vals_color = 'orange'
-    elif pct_of_out_vals >= 20:
+    elif pct_of_out_vals >= 10:
         out_vals_color = 'tomato'
     return dtb, output_df, outliers_list, nr_of_out_vals, pct_of_out_vals, out_vals_color
 
@@ -646,9 +647,9 @@ def detect_outlier_row(df, threshold=0.8):
     if result.display:
         output = result.display[1]
         output['Outlier Probability Score'] = [round(val, 2) for val in output['Outlier Probability Score']]
-        outlier_probabilities = output[output['Outlier Probability Score'] > 0.5]['Outlier Probability Score'].to_list()
+        outlier_probabilities = output[output['Outlier Probability Score'] > threshold]['Outlier Probability Score'].to_list()
         print("outlier probs", outlier_probabilities)
-        outlier_indices = output[output['Outlier Probability Score'] > 0.5].index
+        outlier_indices = output[output['Outlier Probability Score'] > threshold].index
         print("Detected outlier rows: ", outlier_indices)
 
     new_df = df.loc[outlier_indices].reset_index()
